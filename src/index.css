@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    /* Esto compacta todos los componentes proporcionalmente */
+    font-size: 13px;
+  }
+}
