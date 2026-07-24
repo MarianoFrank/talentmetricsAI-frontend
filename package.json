@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@tailwindcss/postcss": "^4.2.4",
+    "axios": "^1.18.1",
+    "jwt-decode": "^4.0.0",
+    "pkce-challenge": "^6.0.0",
     "primeicons": "^7.0.0",
     "primereact": "^10.9.7",
     "react": "^19.2.5",

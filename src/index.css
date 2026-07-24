@@ -1,8 +1,36 @@
 @import "tailwindcss";
 
 @layer base {
-  html {
-    /* Esto compacta todos los componentes proporcionalmente */
-    font-size: 13px;
-  }
+    html {
+        /* Esto compacta todos los componentes proporcionalmente */
+        font-size: 13px;
+    }
+
+    .p-inputgroup>.p-password {
+        flex: 1 1 auto;
+    }
+
+    /* El wrapper del icono también ocupa todo */
+    .p-password .p-icon-field {
+        display: flex;
+        width: 100%;
+    }
+
+    /* El input ocupa todo el espacio disponible */
+    .p-password .p-password-input {
+        flex: 1;
+        width: 100%;
+        border-top-left-radius: 0 !important;
+        border-bottom-left-radius: 0 !important;
+    }
+
+    /* Evita que el ojo se achique */
+    .p-password .p-input-icon {
+        flex-shrink: 0;
+        top: 40% !important;
+    }
+
+    .p-inputgroup .p-password {
+        flex: 1;
+    }
 }

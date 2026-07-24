@@ -1,34 +1,51 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from "react-router-dom";
+import AuthProvider from "./context/AuthProvider";
+import ProtectedRoute from "./guards/ProtectedRoute";
+import { DashboardLayout } from "./pages/consultant/DashboardLayout";
 
-// Importamos tus páginas (las vamos a crear ahora)
-import Sidebar from './components/layout/Sidebar';
-import CreateQuestion from './pages/questions/CreateQuestion';
-// Un componente de ejemplo para el Dashboard o Inicio
-const Dashboard = () => <div className="p-6 text-2xl">Bienvenido a TalentMetrics AI</div>;
+import Login from "./pages/auth/Login";
+import { NotFound } from "./pages/errors/NotFound";
+import DashboardWelcome from "./pages/consultant/DashboardWelcome";
+import PublicHome from "./pages/PublicHome";
+import QuestionList from "./pages/consultant/questions/QuestionList";
+import CreateQuestion from "./pages/consultant/questions/CreateQuestion";
+import GenerateEvaluation from "./pages/consultant/candidates/GenerateEvaluation";
 
 function App() {
-  return (
-    <BrowserRouter>
+    return (
+        <AuthProvider>
+            <Routes>
+                {/* --- RUTAS PÚBLICAS --- */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/" element={<PublicHome />} />
 
-      <div className="flex h-screen overflow-hidden bg-gray-50">
-        <Sidebar className="h-full" />
-        <main className="flex-1 overflow-y-auto px-60 py-10">
-          <Routes>
-            {/* Redirigir la raíz al Dashboard */}
-            <Route path="/" element={<Dashboard />} />
+                {/* --- ZONA CONSULTOR (Exclusivo para no-admins) --- */}
+                <Route element={<ProtectedRoute requireConsultant={true} />}>
+                    <Route element={<DashboardLayout />}>
+                        <Route
+                            path="/dashboard"
+                            element={<DashboardWelcome />}
+                        />
 
-            {/* Ruta para el flujo del PDF */}
-            <Route path="/preguntas/nueva" element={<CreateQuestion />} />
+                        <Route path="/evaluate" element={<GenerateEvaluation />} />
 
-            {/* Ruta 404 por si ponen cualquier cosa */}
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </main>
+                        {/* Gestion de preguntas */}
+                        <Route
+                            path="/questions/new"
+                            element={<CreateQuestion />}
+                        />
+                        <Route
+                            path="/questions"
+                            element={<QuestionList />}
+                        />
+                    </Route>
+                </Route>
 
-      </div>
-    </BrowserRouter>
-  );
+                {/* --- RUTA 404 --- */}
+                <Route path="*" element={<NotFound />} />
+            </Routes>
+        </AuthProvider>
+    );
 }
 
 export default App;
