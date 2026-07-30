@@ -1,46 +1,29 @@
+
 # TalentMetrics AI - Frontend
 
-Este es el frontend de **TalentMetrics AI**, una plataforma de evaluación de competencias TIC. El proyecto forma parte del Seminario Final para la carrera de **Analista Universitario de Sistemas** en la **UTN FRsf**.
+Este repositorio contiene la interfaz de usuario (Single Page Application) del proyecto TalentMetrics AI. Está desarrollado con **React** y **Vite**, usando **Node.js 24**.
 
-## Tecnologías Principales
+## 🛠️ Requisitos Previos
 
-- **React** + **Vite**: Motor principal y entorno de desarrollo rápido.
-- **Tailwind CSS v4**: Estilizado moderno y utilitario.
-- **PrimeReact**: Suite de componentes UI profesionales para la interfaz de gestión.
-- **React Router Dom**: Gestión de navegación SPA.
-- **Docker**: Contenerización para un entorno de desarrollo consistente.
+*   **Node.js:** Versión 24.
+*   **Backend Activo:** Asegurate de tener corriendo el repositorio del backend de TalentMetrics AI para que la interfaz pueda consumir los datos.
 
-## Requisitos Previos
+## ⚙️ Configuración del Entorno
 
-- **Docker** y **Docker Compose** instalados.
+Para que el cliente de React se comunique correctamente con la API, debés crear un archivo `.env` en la raíz de este repositorio con el siguiente formato:
 
-## Instalación y Uso
-
-1. Clonar el repositorio:
-
-```bash
-   git clone https://github.com/MarianoFrank/talentmetricsAI-frontend
-   cd talentmetricsAI-frontend
+```env
+VITE_APP_URL=http://localhost:3000
+VITE_BACKEND_URL=http://localhost:8080
 ```
 
-2. Levantar el entorno con Docker:
 
+### Instalar las dependencias
 ```bash
-docker compose up --build
+npm install
 ```
-
-3. La app estará disponible en http://localhost:5173.
-
-## Comandos mantenimiento y desarrollo
-
+### Levantar el proyecto
 ```bash
-#Abrir una terminal (sh/bash) en el contenedor
-docker exec -it <nombre_del_contenedor> sh
-
-docker logs -f <nombre_del_contenedor>
-
-#Ciclo de vida
-docker compose down -v
-
-docker compose restart
+npm run dev
 ```
+La aplicación estará disponible en tu navegador ingresando a http://localhost:3000.
