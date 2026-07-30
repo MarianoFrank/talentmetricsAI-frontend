@@ -18,6 +18,12 @@ tmApi.interceptors.response.use(
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
+            // SI ES UN CANDIDATO (está en la ruta del cuestionario), no intentamos refresh
+            if (window.location.pathname.startsWith('/questionnaire')) {
+                window.location.href = '/?expired=true';
+                return Promise.reject(error);
+            }
+
             try {
                 // Le pegamos al endpoint de refresh.
                 // Como tenemos withCredentials: true, la cookie de refresh viaja sola.

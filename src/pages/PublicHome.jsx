@@ -1,19 +1,21 @@
-import { Card } from 'primereact/card';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { Message } from 'primereact/message';
-import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
 
 export default function PublicHome() {
-    const navigate = useNavigate(); // <-- Hook correctamente instanciado acá[cite: 2]
+    const navigate = useNavigate();
+    const { loginCandidate } = useAuth();
 
     const [accessCode, setAccessCode] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    const handleAccess = (e) => {
+    const handleAccess = async (e) => {
         e.preventDefault();
+
         if (!accessCode.trim()) {
             setError('Por favor, ingresá un código válido.');
             return;
@@ -22,112 +24,78 @@ export default function PublicHome() {
         setError('');
         setLoading(true);
 
-        setTimeout(() => {
+        try {
+            // El AuthProvider maneja el login y el /me en un solo paso
+            const { questionnaireId } = await loginCandidate(accessCode.trim());
+            navigate(`/questionnaire/${questionnaireId}`);
+        } catch (error) {
+            const errorMsg = error.response?.data?.message || 'Código de acceso inválido o expirado.';
+            setError(errorMsg);
+        } finally {
             setLoading(false);
-            alert(`Código "${accessCode}" ingresado con éxito. ¡Acá comenzaría la evaluación!`);
-        }, 1500);
+        }
     };
 
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-gray-50 px-4 py-8">
-            <div className="w-full max-w-md">
-
-                {/* Header de la App */}
-                <div className="text-center mb-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 text-blue-600 mb-3 shadow-sm">
+        <div className="flex flex-column align-items-center justify-content-center min-h-screen w-full surface-ground px-4 py-6">
+            <div className="w-full" style={{ maxWidth: '420px' }}>
+                <div className="text-center mb-5">
+                    <div className="inline-flex align-items-center justify-content-center w-4rem h-4rem border-circle bg-primary-100 text-primary mb-3">
                         <i className="pi pi-verified text-3xl"></i>
                     </div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight m-0">
-                        TalentMetrics AI
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1 font-medium">
-                        Evaluación de Competencias TIC
-                    </p>
+                    <h1 className="text-3xl font-bold text-color m-0">TalentMetrics AI</h1>
+                    <p className="text-sm text-color-secondary mt-2 font-medium">Evaluación de Competencias TIC</p>
                 </div>
 
-                {/* Card Principal de Acceso (Candidatos) */}
-                <Card className="shadow-lg border border-gray-100 rounded-xl overflow-hidden">
-                    <div className="px-2 py-1">
-                        <h2 className="text-xl font-bold text-gray-800 text-center mb-6 mt-0">
-                            Ingreso de Candidatos
-                        </h2>
+                <div className="surface-card border-1 surface-border border-round p-5 flex flex-column">
+                    <h2 className="text-xl font-bold text-color text-center mb-4 mt-0">Ingreso de Candidatos</h2>
 
-                        <form onSubmit={handleAccess} className="space-y-5">
-                            <div className="flex flex-col gap-2">
-                                <label htmlFor="code" className="text-sm font-semibold text-gray-700">
-                                    Código de Invitación
-                                </label>
-
-                                <div className="p-inputgroup w-full">
-                                    <span className="p-inputgroup-addon bg-gray-50 border-gray-300 text-gray-500">
-                                        <i className="pi pi-key"></i>
-                                    </span>
-                                    <InputText
-                                        id="code"
-                                        value={accessCode}
-                                        onChange={(e) => setAccessCode(e.target.value)}
-                                        placeholder="Ej: ABC-123-XYZ"
-                                        className="w-full border-gray-300 focus:border-blue-500"
-                                        disabled={loading}
-                                    />
-                                </div>
-
-                                <p className="text-xs text-gray-400 m-0 leading-relaxed">
-                                    Introducí el código alfanumérico único que recibiste en tu email de invitación.
-                                </p>
-                            </div>
-
-                            {error && (
-                                <div className="mt-2">
-                                    <Message severity="error" text={error} className="w-full justify-start text-xs" />
-                                </div>
-                            )}
-
-                            <Button
-                                label={loading ? 'Verificando...' : 'Comenzar Evaluación'}
-                                icon="pi pi-sign-in"
-                                type="submit"
-                                className="w-full p-3 font-semibold text-base mt-2"
-                                loading={loading}
-                            />
-                        </form>
-                    </div>
-                </Card>
-
-                {/* Card de Acceso para Consultores (Espejada a la del Login) */}
-                <Card className="mt-5 border border-gray-200 shadow-sm rounded-xl">
-                    <div className="flex items-center justify-between py-1 px-2">
-                        <div className="flex items-center gap-3 text-left">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-gray-500">
-                                <i className="pi pi-briefcase text-lg"></i>
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-semibold text-gray-700 m-0">
-                                    ¿Sos consultor?
-                                </h3>
-                                <p className="text-xs text-gray-400 m-0">
-                                    Accedé al panel de gestión de evaluaciones.
-                                </p>
+                    <form onSubmit={handleAccess} className="flex flex-column gap-4">
+                        <div className="flex flex-column gap-2">
+                            <label htmlFor="code" className="text-sm font-semibold text-color">Código de Invitación</label>
+                            <div className="p-inputgroup w-full">
+                                <span className="p-inputgroup-addon surface-ground">
+                                    <i className="pi pi-key text-color-secondary"></i>
+                                </span>
+                                <InputText
+                                    id="code"
+                                    value={accessCode}
+                                    onChange={(e) => setAccessCode(e.target.value)}
+                                    placeholder="Ej: ABC-123-XYZ"
+                                    disabled={loading}
+                                    autoComplete="off"
+                                />
                             </div>
                         </div>
 
-                        <Button
-                            label="Ingresar"
-                            icon="pi pi-arrow-right"
-                            iconPos="right"
-                            className="p-button-text p-button-sm text-xs text-blue-600 font-semibold"
-                            onClick={() => navigate('/login')} // <-- Navegación directa corregida
-                        />
-                    </div>
-                </Card>
+                        {error && <Message severity="error" text={error} className="w-full justify-content-start text-sm" />}
 
-                {/* Footer */}
-                <div className="text-center mt-8">
-                    <p className="text-xs text-gray-400">
-                        &copy; {new Date().getFullYear()} TalentMetrics AI. Todos los derechos reservados.
-                    </p>
+                        <Button
+                            label={loading ? 'Verificando...' : 'Comenzar Evaluación'}
+                            icon="pi pi-sign-in"
+                            type="submit"
+                            className="w-full mt-2"
+                            loading={loading}
+                        />
+                    </form>
+                </div>
+
+                <div
+                    className="mt-4 surface-card border-1 surface-border border-round p-3 flex align-items-center justify-content-between hover:surface-hover transition-colors cursor-pointer"
+                    onClick={() => navigate('/login')}
+                >
+                    <div className="flex align-items-center gap-3">
+                        <div className="flex align-items-center justify-content-center w-2rem h-2rem border-circle surface-ground text-color-secondary">
+                            <i className="pi pi-briefcase text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-semibold text-color m-0">¿Sos consultor?</h3>
+                            <p className="text-xs text-color-secondary m-0 mt-1">Accedé al panel de gestión.</p>
+                        </div>
+                    </div>
+                    <Button icon="pi pi-arrow-right" text rounded aria-label="Ingresar" />
                 </div>
             </div>
         </div>
     );
-};
+}

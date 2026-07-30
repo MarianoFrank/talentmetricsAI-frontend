@@ -1,43 +1,78 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { InputText } from 'primereact/inputtext';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
+import { useMountEffect } from 'primereact/hooks';
 import { tmApi } from '../../../config/api';
+import { useAppToast } from '../../../context/ToastContext.jsx';
+import { useLazyTable } from '../../../hooks/useLazyTables.js';
 
 const QuestionList = () => {
-    const toast = useRef(null);
+    // --- Contextos y Enrutamiento ---
+    const { showError } = useAppToast();
     const navigate = useNavigate();
 
+    // --- Estados de Datos y Carga ---
     const [questions, setQuestions] = useState([]);
-    const [totalRecords, setTotalRecords] = useState(0);
     const [loading, setLoading] = useState(false);
-
-    // Configurado en 20 registros por página, manteniendo ordenamiento inicial
-    const [lazyParams, setLazyParams] = useState({
-        first: 0, rows: 20, page: 0, sortField: 'name', sortOrder: 1
-    });
-
-    const [competencyId, setCompetencyId] = useState(null);
-    const [factorId, setFactorId] = useState(null);
-    const [questionName, setQuestionName] = useState('');
-
     const [competenciasList, setCompetenciasList] = useState([]);
     const [factoresList, setFactoresList] = useState([]);
 
-    useEffect(() => {
+    // --- Hook de Paginación y Ordenamiento perezoso ---
+    const tableState = useLazyTable({ defaultSortField: 'name' });
+
+    // --- Estados de Filtros ---
+    const [filters, setFilters] = useState({
+        competencyId: null,
+        factorId: null,
+        questionName: ''
+    });
+
+    // --- Carga Inicial de Competencias ---
+    useMountEffect(() => {
         tmApi.get('/api/competencies/select')
             .then(res => setCompetenciasList(res.data))
             .catch(() => showError('No se pudieron cargar las competencias.'));
-    }, []);
+    });
 
+    // --- Carga de Datos Perezosa (Lazy Load) ---
+    const loadLazyData = async () => {
+        setLoading(true);
+        const sortDirection = tableState.lazyParams.sortOrder === 1 ? 'asc' : 'desc';
+
+        const params = {
+            page: tableState.lazyParams.page,
+            size: tableState.lazyParams.rows,
+            sort: `${tableState.lazyParams.sortField},${sortDirection}`,
+            ...(filters.competencyId && { competencyId: filters.competencyId }),
+            ...(filters.factorId && { factorId: filters.factorId }),
+            ...(filters.questionName && { questionName: filters.questionName })
+        };
+
+        try {
+            const response = await tmApi.get('/api/questions', { params });
+            setQuestions(response.data.content);
+            tableState.setTotalRecords(response.data.totalElements);
+        } catch (error) {
+            showError('Hubo un error al obtener las preguntas.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Sincronización ante cambios en los parámetros del hook de tabla
+    useEffect(() => {
+        loadLazyData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tableState.lazyParams]);
+
+    // --- Manejadores de Eventos y Filtros ---
     const handleCompetencyChange = (e) => {
         const selectedId = e.value;
-        setCompetencyId(selectedId);
-        setFactorId(null);
+        setFilters(prev => ({ ...prev, competencyId: selectedId, factorId: null }));
         setFactoresList([]);
 
         if (selectedId) {
@@ -47,151 +82,111 @@ const QuestionList = () => {
         }
     };
 
-    const loadLazyData = async () => {
-        setLoading(true);
-        const sortDirection = lazyParams.sortOrder === 1 ? 'asc' : 'desc';
-
-        const params = {
-            page: lazyParams.page,
-            size: lazyParams.rows,
-            sort: `${lazyParams.sortField},${sortDirection}`,
-            ...(competencyId && { competencyId }),
-            ...(factorId && { factorId }),
-            ...(questionName && { questionName })
-        };
-
-        try {
-            const response = await tmApi.get('/api/questions', { params });
-            setQuestions(response.data.content);
-            setTotalRecords(response.data.totalElements);
-        } catch (error) {
-            showError('Hubo un error al obtener las preguntas.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadLazyData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [lazyParams]);
-
-    const showError = (detail) => {
-        toast.current.show({ severity: 'error', summary: 'Error', detail, life: 3000 });
-    };
-
-    const onPage = (e) => setLazyParams(prev => ({ ...prev, first: e.first, rows: e.rows, page: e.page }));
-    const onSort = (e) => setLazyParams(prev => ({ ...prev, sortField: e.sortField, sortOrder: e.sortOrder }));
-
     const handleBuscar = () => {
-        setLazyParams(prev => ({ ...prev, first: 0, page: 0 }));
+        tableState.resetPagination();
     };
 
-    // Botones de acción sutiles y refinados al estilo de CreateQuestion / GenerateEvaluation
+    const handleClearFilters = () => {
+        setFilters({ competencyId: null, factorId: null, questionName: '' });
+        handleBuscar();
+    };
+
+    // --- Templates para la Tabla ---
     const actionBodyTemplate = () => (
-        <div className="flex justify-center gap-2">
-            <Button
-                icon="pi pi-pencil"
-                tooltip="Modificar"
-                tooltipOptions={{ position: 'top' }}
-                className="bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-300 h-8 w-8 text-xs font-semibold rounded-md transition-all shadow-none"
-            />
-            <Button
-                icon="pi pi-trash"
-                tooltip="Eliminar"
-                tooltipOptions={{ position: 'top' }}
-                className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 h-8 w-8 text-xs font-semibold rounded-md transition-all shadow-none"
-            />
+        <div className="flex justify-content-center gap-2">
+            <Button size="small" icon="pi pi-pencil" severity="secondary" text rounded tooltip="Modificar" tooltipOptions={{ position: 'top' }} />
+            <Button size="small" icon="pi pi-trash" severity="danger" text rounded tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
         </div>
     );
 
     return (
-        <div className="p-6 max-w-350 mx-auto text-gray-800 bg-[#f8f9fc] min-h-screen">
-            <Toast ref={toast} />
+        <div className="w-full flex flex-column gap-4 pb-8">
 
-            {/* Encabezado */}
-            <div className="mb-8 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <i className="pi pi-list text-2xl text-blue-600"></i>
-                    <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">Banco de Preguntas</h1>
+            {/* --- Encabezado --- */}
+            <div className="flex flex-column sm:flex-row align-items-start sm:align-items-center justify-content-between gap-3 mb-2">
+                <div className="flex align-items-center gap-3">
+                    <i className="pi pi-list text-3xl text-primary"></i>
+                    <div>
+                        <h1 className="m-0 text-2xl font-bold text-color">Banco de Preguntas</h1>
+                        <p className="m-0 mt-1 text-sm text-color-secondary">Gestioná las preguntas para las evaluaciones</p>
+                    </div>
                 </div>
-
-                <Button
-                    label="Crear Pregunta"
-                    icon="pi pi-plus"
-                    className="bg-blue-600 text-white hover:bg-blue-700 border-none px-5 py-2.5 font-semibold rounded-lg shadow-sm transition-transform hover:scale-105"
-                    onClick={() => navigate('/questions/new')}
-                />
+                <Button label="Crear Pregunta" icon="pi pi-plus" onClick={() => navigate('/questions/new')} />
             </div>
 
-            {/* Tarjeta de Filtros */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mb-8 flex flex-col md:flex-row gap-5 items-end transition-all">
-                <div className="flex flex-col w-full md:w-64">
-                    <label className="text-sm font-semibold text-gray-600 mb-1.5 ml-1">Competencia</label>
-                    <Dropdown
-                        value={competencyId}
-                        options={competenciasList}
-                        onChange={handleCompetencyChange}
-                        optionLabel="nombre"
-                        optionValue="id"
-                        placeholder="Seleccione competencia"
-                        showClear
-                        className="w-full border-gray-300 rounded-lg"
+            {/* --- Contenedor Principal --- */}
+            <div className="surface-card border-1 surface-border border-round overflow-hidden flex flex-column">
+
+                {/* Filtros Integrados */}
+                <div className="p-4 border-bottom-1 surface-border flex flex-column md:flex-row gap-3 align-items-end">
+                    <div className="flex flex-column flex-1 gap-2">
+                        <label className="font-medium text-sm text-color-secondary">Competencia</label>
+                        <Dropdown
+                            value={filters.competencyId}
+                            options={competenciasList}
+                            onChange={handleCompetencyChange}
+                            optionLabel="nombre"
+                            optionValue="id"
+                            placeholder="Seleccione competencia"
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="flex flex-column flex-1 gap-2">
+                        <label className="font-medium text-sm text-color-secondary">Factor</label>
+                        <Dropdown
+                            value={filters.factorId}
+                            options={factoresList}
+                            onChange={(e) => setFilters(prev => ({ ...prev, factorId: e.value }))}
+                            optionLabel="nombre"
+                            optionValue="id"
+                            placeholder="Seleccione un factor"
+                            disabled={!filters.competencyId}
+                            className="w-full"
+                        />
+                    </div>
+                    <div className="flex flex-column flex-1 gap-2">
+                        <label className="font-medium text-sm text-color-secondary">Nombre de pregunta</label>
+                        <InputText
+                            value={filters.questionName}
+                            onChange={(e) => setFilters(prev => ({ ...prev, questionName: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
+                            placeholder="Ej. Nivel de adaptabilidad..."
+                            className="w-full"
+                        />
+                    </div>
+                    <Button label="Buscar" icon="pi pi-search" onClick={handleBuscar} className="w-full md:w-auto" />
+                    <Button
+                        label="Limpiar"
+                        icon="pi pi-filter-slash"
+                        severity="secondary"
+                        outlined
+                        onClick={handleClearFilters}
                     />
                 </div>
 
-                <div className="flex flex-col w-full md:w-64">
-                    <label className="text-sm font-semibold text-gray-600 mb-1.5 ml-1">Factor</label>
-                    <Dropdown
-                        value={factorId}
-                        options={factoresList}
-                        onChange={(e) => setFactorId(e.value)}
-                        optionLabel="nombre"
-                        optionValue="id"
-                        placeholder="Seleccione un factor"
-                        showClear
-                        className="w-full border-gray-300 rounded-lg"
-                        disabled={!competencyId}
-                    />
-                </div>
-
-                <div className="flex flex-col flex-1 w-full">
-                    <label className="text-sm font-semibold text-gray-600 mb-1.5 ml-1">Nombre de pregunta</label>
-                    <InputText
-                        value={questionName}
-                        onChange={(e) => setQuestionName(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleBuscar()}
-                        placeholder="Ej. Nivel de adaptabilidad..."
-                        className="w-full border-gray-300 rounded-lg"
-                    />
-                </div>
-
-                <Button
-                    label="Buscar"
-                    icon="pi pi-search"
-                    className="w-full md:w-32 bg-blue-600 border-none text-white hover:bg-blue-700 font-semibold h-12 rounded-lg"
-                    onClick={handleBuscar}
-                />
-            </div>
-
-            {/* Tarjeta de la Tabla */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* Tabla de Resultados */}
                 <DataTable
                     value={questions}
-                    lazy paginator first={lazyParams.first} rows={lazyParams.rows}
-                    totalRecords={totalRecords} onPage={onPage} onSort={onSort}
-                    sortField={lazyParams.sortField} sortOrder={lazyParams.sortOrder} loading={loading}
+                    lazy
+                    paginator
+                    first={tableState.lazyParams.first}
+                    rows={tableState.lazyParams.rows}
+                    totalRecords={tableState.totalRecords}
+                    onPage={tableState.onPage}
+                    onSort={tableState.onSort}
+                    sortField={tableState.lazyParams.sortField}
+                    sortOrder={tableState.lazyParams.sortOrder}
+                    loading={loading}
                     emptyMessage="No se encontraron preguntas con estos filtros."
-                    className="p-datatable-sm"
-                    stripedRows
-                    rowHover
                     size="small"
+                    rowHover
+                    stripedRows
                 >
-                    <Column field="competencyName" header="Competencia" sortable sortField="factor.competency.name" className="text-gray-900 font-medium py-4" />
-                    <Column field="factorName" header="Factor" sortable sortField="factor.name" className="text-gray-700 py-4" />
-                    <Column field="questionName" header="Pregunta" sortable sortField="name" className="text-gray-900 font-semibold py-4" />
-                    <Column field="updatedAt" header="Última Modif." sortable sortField="updatedAt" className="text-gray-500 text-sm py-4" />
-                    <Column header="Acciones" body={actionBodyTemplate} align="center" style={{ width: '130px' }} />
+                    <Column field="competencyName" header="Competencia" sortable sortField="factor.competency.name" />
+                    <Column field="factorName" header="Factor" sortable sortField="factor.name" />
+                    <Column field="questionName" header="Pregunta" sortable sortField="name" className="font-semibold" />
+                    <Column field="updatedAt" header="Última Modif." sortable sortField="updatedAt" className="text-color-secondary text-sm" />
+                    <Column header="Acciones" body={actionBodyTemplate} align="center" />
                 </DataTable>
             </div>
         </div>

@@ -1,40 +1,38 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom'; // <-- Importamos useNavigate
+import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Dropdown } from 'primereact/dropdown';
 import { Button } from 'primereact/button';
-import { Toast } from 'primereact/toast';
 import { InputNumber } from 'primereact/inputnumber';
 import { Dialog } from 'primereact/dialog';
+import { Divider } from 'primereact/divider';
+import { DataTable } from 'primereact/datatable';
+import { Column } from 'primereact/column';
+import { useMountEffect } from 'primereact/hooks';
 import { tmApi } from '../../../config/api';
+import { useAppToast } from '../../../context/ToastContext.jsx';
 
 const CreateQuestion = () => {
-    const toast = useRef(null);
-    const navigate = useNavigate(); // <-- Inicializamos el hook
+    const { showSuccess, showError } = useAppToast();
+    const navigate = useNavigate();
 
-    // --- ESTADOS DEL FORMULARIO ---
-    const [competencyId, setCompetencyId] = useState(null);
-    const [factorId, setFactorId] = useState(null);
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [text, setText] = useState('');
-    const [type, setType] = useState('SINGLE_CHOICE');
+    const [formData, setFormData] = useState({
+        competencyId: null,
+        factorId: null,
+        name: '',
+        description: '',
+        text: '',
+        type: 'SINGLE_CHOICE',
+        options: []
+    });
 
-    // --- ESTADOS PARA LAS OPCIONES ---
-    const [options, setOptions] = useState([]);
     const [newOptionText, setNewOptionText] = useState('');
 
-    // --- ESTADOS PARA LA INTELIGENCIA ARTIFICIAL ---
     const [isAiModalVisible, setIsAiModalVisible] = useState(false);
     const [extraContext, setExtraContext] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // --- REFERENCIAS PARA DRAG AND DROP ---
-    const dragItem = useRef();
-    const dragOverItem = useRef();
-
-    // --- ESTADOS DE LAS LISTAS ---
     const [competenciasList, setCompetenciasList] = useState([]);
     const [factoresList, setFactoresList] = useState([]);
 
@@ -43,16 +41,15 @@ const CreateQuestion = () => {
         { label: 'MultipleChoice', value: 'MULTIPLE_CHOICE' }
     ];
 
-    useEffect(() => {
+    useMountEffect(() => {
         tmApi.get('/api/competencies/select')
             .then(res => setCompetenciasList(res.data))
             .catch(() => showError('No se pudieron cargar las competencias.'));
-    }, []);
+    });
 
     const handleCompetencyChange = (e) => {
         const selectedId = e.value;
-        setCompetencyId(selectedId);
-        setFactorId(null);
+        setFormData(prev => ({ ...prev, competencyId: selectedId, factorId: null }));
         setFactoresList([]);
 
         if (selectedId) {
@@ -62,56 +59,53 @@ const CreateQuestion = () => {
         }
     };
 
-    // --- LÓGICA DE LAS OPCIONES ---
+    // --- MANEJO DE OPCIONES ---
     const handleAddOption = () => {
         if (!newOptionText.trim()) return;
-
-        setOptions([...options, { text: newOptionText, weight: 0 }]);
+        setFormData(prev => ({
+            ...prev,
+            options: [...prev.options, { text: newOptionText, weight: 0 }]
+        }));
         setNewOptionText('');
     };
 
     const handleRemoveOption = (indexToRemove) => {
-        setOptions(options.filter((_, idx) => idx !== indexToRemove));
+        setFormData(prev => ({
+            ...prev,
+            options: prev.options.filter((_, idx) => idx !== indexToRemove)
+        }));
     };
 
     const handleWeightChange = (index, newWeight) => {
-        const updatedOptions = [...options];
-        updatedOptions[index].weight = newWeight;
-        setOptions(updatedOptions);
+        setFormData(prev => {
+            const updatedOptions = [...prev.options];
+            updatedOptions[index].weight = newWeight;
+            return { ...prev, options: updatedOptions };
+        });
     };
 
     const handleOptionTextChange = (index, newText) => {
-        const updatedOptions = [...options];
-        updatedOptions[index].text = newText;
-        setOptions(updatedOptions);
+        setFormData(prev => {
+            const updatedOptions = [...prev.options];
+            updatedOptions[index].text = newText;
+            return { ...prev, options: updatedOptions };
+        });
     };
 
-    // --- LÓGICA DE DRAG AND DROP ---
-    const handleDragStart = (e, index) => { dragItem.current = index; };
-    const handleDragEnter = (e, index) => { dragOverItem.current = index; };
-
-    const handleDragEnd = () => {
-        if (dragItem.current !== undefined && dragOverItem.current !== undefined) {
-            const newOptions = [...options];
-            const draggedItemContent = newOptions[dragItem.current];
-            newOptions.splice(dragItem.current, 1);
-            newOptions.splice(dragOverItem.current, 0, draggedItemContent);
-            setOptions(newOptions);
-        }
-        dragItem.current = null;
-        dragOverItem.current = null;
-    };
-
-    // --- LÓGICA DE GUARDADO MANUAL ---
+    // --- GUARDADO MANUAL ---
     const handleSubmit = async () => {
-        if (!factorId) return showError('Debes seleccionar un factor.');
-        if (!name.trim()) return showError('El nombre es obligatorio.');
-        if (!text.trim()) return showError('La pregunta es obligatoria.');
-        if (options.length < 2) return showError('Debes agregar al menos 2 opciones de respuesta.');
+        if (!formData.factorId) return showError('Debes seleccionar un factor.');
+        if (!formData.name.trim()) return showError('El nombre es obligatorio.');
+        if (!formData.text.trim()) return showError('La pregunta es obligatoria.');
+        if (formData.options.length < 2) return showError('Debes agregar al menos 2 opciones de respuesta.');
 
         const payload = {
-            factorId, name, description, text, type,
-            options: options.map((opt, idx) => ({
+            factorId: formData.factorId,
+            name: formData.name,
+            description: formData.description,
+            text: formData.text,
+            type: formData.type,
+            options: formData.options.map((opt, idx) => ({
                 displayOrder: idx + 1,
                 weight: opt.weight || 0,
                 text: opt.text
@@ -121,242 +115,192 @@ const CreateQuestion = () => {
         try {
             await tmApi.post('/api/questions', payload);
             showSuccess('¡Pregunta creada con éxito!');
-
-            // Un toquecito de UX: Volvemos a la lista después de guardar con éxito (tras una leve pausa para que vea el cartel verde)
             setTimeout(() => navigate(-1), 1500);
-            resetForm();
         } catch (error) {
-            console.error(error);
             showError('Hubo un error al guardar la pregunta.');
         }
     };
 
-    const resetForm = () => {
-        setName(''); setDescription(''); setText(''); setOptions([]); setNewOptionText('');
-    };
-
-    // --- LÓGICA DE IA ---
+    // --- GENERACIÓN CON IA ---
     const handleGenerateWithAI = async () => {
-        const comp = competenciasList.find(c => c.id === competencyId);
-        const fact = factoresList.find(f => f.id === factorId);
+        const comp = competenciasList.find(c => c.id === formData.competencyId);
+        const fact = factoresList.find(f => f.id === formData.factorId);
 
-        if (!comp || !fact) {
-            return showError("Seleccioná una competencia y un factor primero.");
-        }
+        if (!comp || !fact) return showError("Seleccioná una competencia y un factor primero.");
 
         setIsGenerating(true);
         try {
             const payload = {
                 competencyName: comp.nombre,
                 factorName: fact.nombre,
-                questionName: name, // Mandamos lo que haya (vacío o no)
-                description: description, // Mandamos lo que haya (vacío o no)
+                questionName: formData.name,
+                description: formData.description,
                 extraContext: extraContext
             };
 
             const response = await tmApi.post('/api/ai/generate-question', payload);
 
+            setFormData(prev => ({
+                ...prev,
+                name: response.data.questionName || prev.name,
+                description: response.data.description || prev.description,
+                type: response.data.type || prev.type,
+                text: response.data.text,
+                options: response.data.options
+            }));
 
-            if (response.data.questionName) setName(response.data.questionName);
-            if (response.data.description) setDescription(response.data.description);
-            if (response.data.type) setType(response.data.type); // Te setea SINGLE_CHOICE o MULTIPLE_CHOICE automático
-
-            setText(response.data.text);
-            setOptions(response.data.options);
-
-            showSuccess("¡Pregunta y opciones generadas con éxito!");
+            showSuccess("¡Pregunta generada con éxito!");
             setIsAiModalVisible(false);
             setExtraContext('');
-
         } catch (error) {
-            console.error(error);
             showError("Hubo un error al conectar con la Inteligencia Artificial.");
         } finally {
             setIsGenerating(false);
         }
     };
 
-    const showError = (detail) => toast.current.show({ severity: 'error', summary: 'Error', detail, life: 3000 });
-    const showSuccess = (detail) => toast.current.show({ severity: 'success', summary: 'Éxito', detail, life: 3000 });
-
     const aiModalFooter = (
-        <div className="flex justify-end gap-3 mt-4">
-            <Button
-                label="Cancelar"
-                icon="pi pi-times"
-                onClick={() => setIsAiModalVisible(false)}
-                className="p-button-text text-gray-600"
-                disabled={isGenerating}
-            />
-            <Button
-                label={isGenerating ? "Generando..." : "Generar IA"}
-                icon="pi pi-sparkles"
-                loading={isGenerating} // <-- Esta es la magia nativa de PrimeReact
-                onClick={handleGenerateWithAI}
-                className="bg-blue-600 hover:bg-blue-700 text-white border-none"
-                autoFocus
-            />
+        <div className="flex justify-content-end gap-2 pt-3 border-top-1 surface-border mt-3">
+            <Button label="Cancelar" icon="pi pi-times" severity="secondary" text onClick={() => setIsAiModalVisible(false)} disabled={isGenerating} />
+            <Button label={isGenerating ? "Generando..." : "Generar IA"} icon="pi pi-sparkles" loading={isGenerating} onClick={handleGenerateWithAI} autoFocus />
         </div>
     );
 
     return (
-        <div className="max-w-6xl mx-auto p-8 bg-white rounded-2xl shadow-sm border border-gray-100 text-gray-800 relative">
-            <Toast ref={toast} />
+        <div className="w-full flex flex-column gap-4 pb-8">
 
-            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-8">Crear Pregunta</h1>
-
-            {/* Fila 1: Competencia y Factor */}
-            <div className="flex flex-col md:flex-row gap-6 mb-6">
-                <div className="flex flex-col flex-1">
-                    <label className="text-sm font-semibold text-gray-600 mb-2">Competencia</label>
-                    <Dropdown value={competencyId} options={competenciasList} onChange={handleCompetencyChange} optionLabel="nombre" optionValue="id" placeholder="Seleccione una competencia" className="w-full" />
-                </div>
-                <div className="flex flex-col flex-1">
-                    <label className="text-sm font-semibold text-gray-600 mb-2">Factor</label>
-                    <Dropdown value={factorId} options={factoresList} onChange={(e) => setFactorId(e.value)} optionLabel="nombre" optionValue="id" placeholder="Seleccione un factor" disabled={!competencyId} className="w-full" />
+            <div className="flex align-items-center gap-3 mb-2">
+                <i className="pi pi-plus-circle text-3xl text-primary"></i>
+                <div>
+                    <h1 className="m-0 text-2xl font-bold text-color">Crear Pregunta</h1>
+                    <p className="m-0 mt-1 text-sm text-color-secondary">Añadí un nuevo escenario al banco de evaluación</p>
                 </div>
             </div>
 
-            <div className="flex flex-col mb-6">
-                <label className="text-sm font-semibold text-gray-600 mb-2">Nombre</label>
-                <InputText value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Resolución problema N+1" className="w-full" />
-            </div>
+            {/* Formulario Principal */}
+            <div className="surface-card border-1 surface-border border-round p-5 flex flex-column gap-4">
 
-            <div className="flex flex-col mb-6">
-                <label className="text-sm font-semibold text-gray-600 mb-2">Descripción (opcional)</label>
-                <InputTextarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describa el objetivo de la pregunta..." rows={3} className="w-full resize-none" autoResize />
-            </div>
-
-            <div className="flex flex-col mb-6">
-                <label className="text-sm font-semibold text-gray-600 mb-2">Pregunta</label>
-                <div className="flex flex-col sm:flex-row gap-4 items-start">
-                    <InputTextarea
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        placeholder="Ingrese la pregunta detallada..."
-                        className="w-full flex-1 resize-none"
-                        autoResize
-                        rows={2}
-                    />
-                    <Button
-                        label="Generar con IA"
-                        icon="pi pi-sparkles"
-                        className="bg-blue-600 hover:bg-blue-700 text-white border-none whitespace-nowrap px-5 shadow-sm transition-transform hover:scale-105 h-12"
-                        onClick={() => {
-                            if (!competencyId || !factorId) {
-                                showError("Elegí una competencia y un factor primero para darle contexto a la IA.");
-                            } else {
-                                setIsAiModalVisible(true);
-                            }
-                        }}
-                    />
-                </div>
-            </div>
-
-            <div className="flex flex-col mb-6">
-                <label className="text-sm font-semibold text-gray-600 mb-2">Tipo de Respuesta</label>
-                <Dropdown value={type} options={questionTypes} onChange={(e) => setType(e.value)} placeholder="Seleccione un tipo" className="w-full md:w-1/2" />
-            </div>
-
-            {/* --- SECCIÓN DE OPCIONES DRAG & DROP --- */}
-            <div className="mb-8">
-                <label className="text-sm font-semibold text-gray-600 mb-3 block">Lista de Opciones (Arrastrá para ordenar)</label>
-
-                <div className="flex flex-col gap-3 mb-4">
-                    {options.map((opt, index) => (
-                        <div key={index} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} className="flex items-start gap-3 bg-gray-50 border border-gray-200 p-3 rounded-xl cursor-move hover:bg-gray-100 hover:shadow-sm transition-all">
-
-                            <i className="pi pi-bars text-gray-400 cursor-grab active:cursor-grabbing text-lg mt-3"></i>
-                            <span className="font-bold text-gray-500 w-6 text-center mt-2">{index + 1}.</span>
-
-                            <InputTextarea
-                                value={opt.text}
-                                onChange={(e) => handleOptionTextChange(index, e.target.value)}
-                                className="flex-1 font-medium text-gray-800 bg-transparent border-transparent hover:border-gray-300 focus:border-blue-500 shadow-none p-2 resize-none"
-                                autoResize
-                                rows={1}
-                            />
-
-                            <div className="flex items-center gap-4 mt-1">
-                                <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200">
-                                    <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Peso</label>
-                                    <InputNumber value={opt.weight} onValueChange={(e) => handleWeightChange(index, e.value)} className="w-16 h-8" inputClassName="text-center w-full p-1 text-sm font-bold text-blue-600" />
-                                </div>
-                                <Button icon="pi pi-trash" className="p-button-rounded p-button-text p-button-danger hover:bg-red-50" onClick={() => handleRemoveOption(index)} tooltip="Eliminar" tooltipOptions={{ position: 'top' }} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 p-1 mt-4">
-                    <InputTextarea
-                        value={newOptionText}
-                        onChange={(e) => setNewOptionText(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleAddOption();
-                            }
-                        }}
-                        placeholder={`Escribí la opción ${options.length + 1} y presioná Enter (Shift+Enter para salto de línea)...`}
-                        className="flex-1 border-dashed border-2 border-gray-300 focus:border-blue-500 focus:ring-0 rounded-xl px-4 py-3 resize-none"
-                        autoResize
-                        rows={1}
-                    />
-                    <Button label="Agregar Opción" icon="pi pi-plus" className="bg-blue-600 hover:bg-blue-700 text-white border-none px-6 py-3 rounded-xl shadow-sm h-12" onClick={handleAddOption} />
-                </div>
-            </div>
-
-            {/* --- FOOTER CON BOTONES CANCELAR Y GUARDAR --- */}
-            <div className="flex flex-col sm:flex-row justify-end items-center gap-4 pt-6 border-t border-gray-100 mt-8">
-                {/* BOTÓN CANCELAR */}
-                <Button
-                    label="Cancelar"
-                    icon="pi pi-times"
-                    className="p-button-text text-gray-600 hover:bg-gray-50 px-6 py-3 text-lg font-semibold transition-all w-full sm:w-auto"
-                    onClick={() => navigate('/questions')} // <-- Volvemos a la lista de preguntas
-                />
-
-                {/* BOTÓN GUARDAR */}
-                <Button
-                    label="Guardar Pregunta"
-                    icon="pi pi-check"
-                    className="bg-blue-600 hover:bg-blue-700 text-white border-none px-10 py-3 text-lg font-bold shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
-                    onClick={handleSubmit}
-                />
-            </div>
-
-            {/* --- MODAL PARA EL CONTEXTO EXTRA --- */}
-            <Dialog
-                header={
-                    <div className="flex items-center gap-2">
-                        <i className="pi pi-sparkles text-blue-600 text-xl"></i>
-                        <span className="font-bold text-xl">Generar con Inteligencia Artificial</span>
+                <div className="formgrid grid">
+                    <div className="field col-12 md:col-6 flex flex-column gap-2">
+                        <label className="font-semibold text-sm text-color-secondary">Competencia</label>
+                        <Dropdown value={formData.competencyId} options={competenciasList} onChange={handleCompetencyChange} optionLabel="nombre" optionValue="id" placeholder="Seleccione una competencia" className="w-full" />
                     </div>
-                }
-                visible={isAiModalVisible}
-                style={{ width: '90vw', maxWidth: '600px' }}
-                footer={aiModalFooter}
-                onHide={() => !isGenerating && setIsAiModalVisible(false)}
-                className="p-fluid rounded-xl"
-            >
-                <div className="m-0 pt-2">
-                    <p className="text-gray-600 mb-4 text-sm">
-                        La IA utilizará la <span className="font-semibold text-gray-800">Competencia</span>, el <span className="font-semibold text-gray-800">Factor</span>, el <span className="font-semibold text-gray-800">Nombre</span> y la <span className="font-semibold text-gray-800">Descripción</span> que completaste para generar la pregunta. Si lo deseás, agregá un contexto extra para refinar las opciones de respuesta.
-                    </p>
+                    <div className="field col-12 md:col-6 flex flex-column gap-2">
+                        <label className="font-semibold text-sm text-color-secondary">Factor</label>
+                        <Dropdown value={formData.factorId} options={factoresList} onChange={(e) => setFormData(prev => ({ ...prev, factorId: e.value }))} optionLabel="nombre" optionValue="id" placeholder="Seleccione un factor" disabled={!formData.competencyId} className="w-full" />
+                    </div>
+                </div>
 
-                    <label className="text-sm font-semibold text-gray-800 mb-2 block">Contexto / Aclaraciones para la IA (Opcional)</label>
-                    <InputTextarea
-                        value={extraContext}
-                        onChange={(e) => setExtraContext(e.target.value)}
-                        rows={5}
-                        placeholder="Ej: Las opciones incorrectas deben penalizar a quienes elijan FetchType.EAGER. El perfil buscado es Semi-Senior..."
-                        className="w-full rounded-xl border-gray-300 focus:border-blue-500 resize-none p-3 shadow-sm"
-                        disabled={isGenerating}
-                    />
+                <div className="flex flex-column gap-2">
+                    <label className="font-semibold text-sm text-color-secondary">Nombre de la pregunta</label>
+                    <InputText value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="Ej. Resolución problema N+1" className="w-full" />
+                </div>
+
+                <div className="flex flex-column gap-2">
+                    <label className="font-semibold text-sm text-color-secondary">Descripción (opcional)</label>
+                    <InputTextarea value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder="Describa el objetivo de la pregunta..." rows={2} className="w-full resize-none" autoResize />
+                </div>
+
+                <div className="flex flex-column gap-2">
+                    <label className="font-semibold text-sm text-color-secondary">Texto de la Pregunta</label>
+                    <div className="flex flex-column sm:flex-row gap-3 align-items-start">
+                        <InputTextarea value={formData.text} onChange={(e) => setFormData(prev => ({ ...prev, text: e.target.value }))} placeholder="Ingrese la pregunta detallada..." className="w-full flex-1 resize-none" autoResize rows={2} />
+                        <Button label="Asistir con IA" icon="pi pi-sparkles" severity="info" outlined className="white-space-nowrap" onClick={() => { (!formData.competencyId || !formData.factorId) ? showError("Elegí una competencia y un factor primero.") : setIsAiModalVisible(true) }} />
+                    </div>
+                </div>
+
+                <div className="flex flex-column gap-2 mb-2">
+                    <label className="font-semibold text-sm text-color-secondary">Tipo de Respuesta</label>
+                    <Dropdown value={formData.type} options={questionTypes} onChange={(e) => setFormData(prev => ({ ...prev, type: e.value }))} placeholder="Seleccione un tipo" className="w-full md:w-20rem" />
+                </div>
+
+
+                {/* --- ZONA DE OPCIONES REFACTORIZADA ESTÉTICAMENTE --- */}
+                <div className="flex flex-column gap-3">
+                    <label className="font-semibold text-sm text-color-secondary">Opciones de Respuesta (Arrastrá de las rayitas para ordenar)</label>
+
+                    {/* Todo va adentro del mismo contenedor con borde para que se vea como una sola pieza */}
+                    <div className="border-1 surface-border border-round overflow-hidden flex flex-column">
+                        <DataTable
+                            showHeaders={false}
+                            className="shadow-none border-none"
+                            value={formData.options}
+                            reorderableRows
+                            onRowReorder={(e) => setFormData(prev => ({ ...prev, options: e.value }))}
+                            emptyMessage={<div className="p-4 text-center text-color-secondary">Todavía no agregaste ninguna opción.</div>}
+                            className="p-datatable-sm" // ACHICAMOS LAS FILAS ACÁ
+
+                        >
+                            <Column rowReorder style={{ width: '3rem', textAlign: 'center' }} />
+
+                            <Column body={(rowData, props) => <span className="font-medium text-color-secondary">{props.rowIndex + 1}.</span>} style={{ width: '3rem' }} />
+
+                            <Column body={(rowData, props) => (
+                                // Le devolvimos el borde al Input para que se entienda que es un campo
+                                <InputText
+                                    value={rowData.text}
+                                    onChange={(e) => handleOptionTextChange(props.rowIndex, e.target.value)}
+                                    className="w-full"
+                                    placeholder="Escribí la opción..."
+                                />
+                            )} />
+
+                            <Column body={(rowData, props) => (
+                                <div className="flex align-items-center justify-content-end gap-2">
+                                    <span className="text-xs text-color-secondary font-semibold uppercase tracking-wider">Peso</span>
+                                    <InputNumber
+                                        value={rowData.weight}
+                                        onValueChange={(e) => handleWeightChange(props.rowIndex, e.value)}
+                                        showButtons
+                                        buttonLayout="horizontal"
+                                        decrementButtonClassName="surface-border p-button-text p-button-plain z-0"
+                                        incrementButtonClassName="surface-border p-button-text p-button-plain"
+                                        incrementButtonIcon="pi pi-plus"
+                                        decrementButtonIcon="pi pi-minus"
+                                        inputClassName="w-3rem text-center"
+                                        min={0}
+                                        max={10}
+                                    />
+                                </div>
+                            )} style={{ width: '16rem' }} />
+
+                            <Column body={(rowData, props) => (
+                                <Button icon="pi pi-trash" severity="danger" text rounded aria-label="Eliminar" onClick={() => handleRemoveOption(props.rowIndex)} />
+                            )} style={{ width: '4rem', textAlign: 'center' }} />
+                        </DataTable>
+
+                        {/* Input para agregar nuevas opciones integrado abajo de la tabla */}
+                        <div className="surface-ground p-3 surface-border flex flex-column sm:flex-row align-items-center gap-3">
+                            <InputText
+                                value={newOptionText}
+                                onChange={(e) => setNewOptionText(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleAddOption(); } }}
+                                placeholder={`Escribí la opción ${formData.options.length + 1} y presioná Enter...`}
+                                className="flex-1 w-full"
+                            />
+                            <Button label="Agregar" icon="pi pi-plus" severity="secondary" outlined onClick={handleAddOption} className="w-full sm:w-auto" />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-content-end gap-3 border-top-1 surface-border pt-4 mt-2">
+                    <Button label="Cancelar" icon="pi pi-times" severity="secondary" text onClick={() => navigate('/questions')} />
+                    <Button label="Guardar Pregunta" icon="pi pi-check" onClick={handleSubmit} />
+                </div>
+            </div>
+
+            {/* Modal IA */}
+            <Dialog header={<div className="flex align-items-center gap-2"><i className="pi pi-sparkles text-primary text-xl"></i><span>Generar con IA</span></div>} visible={isAiModalVisible} breakpoints={{ '960px': '75vw', '640px': '95vw' }} style={{ width: '45vw' }} footer={aiModalFooter} onHide={() => !isGenerating && setIsAiModalVisible(false)}>
+                <div className="pt-2 flex flex-column gap-3">
+                    <p className="text-color-secondary text-sm m-0 line-height-3">
+                        La IA utilizará el contexto previo (Competencia, Factor, Nombre y Descripción) para proponer una pregunta estructurada.
+                    </p>
+                    <div className="flex flex-column gap-2">
+                        <label className="text-sm font-semibold text-color">Instrucciones Adicionales (Opcional)</label>
+                        <InputTextarea value={extraContext} onChange={(e) => setExtraContext(e.target.value)} rows={4} placeholder="Ej: Asegurate de que haya una sola respuesta correcta y penalice la mala práctica..." className="w-full resize-none" disabled={isGenerating} />
+                    </div>
                 </div>
             </Dialog>
-
         </div>
     );
 };

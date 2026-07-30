@@ -1,8 +1,12 @@
 import { Menu } from 'primereact/menu';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { Avatar } from 'primereact/avatar';
+import { Button } from 'primereact/button';
+import { useTheme } from '../hooks/useTheme';
 
 const Sidebar = () => {
+    const { isDark, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout } = useAuth();
@@ -15,13 +19,12 @@ const Sidebar = () => {
         return (
             <div
                 onClick={() => item.route && navigate(item.route)}
-                className={`flex items-center gap-3 px-4 py-3 mx-2 my-1 rounded-lg cursor-pointer transition-all duration-200 group
-                    ${active ? 'bg-blue-50/70 text-blue-600 font-semibold' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}
+                // Removido bg-surface-200. surface-hover es suficiente y funciona perfecto en ambos temas.
+                className={`flex align-items-center gap-3 px-3 py-2 mx-2 my-1 border-round cursor-pointer transition-colors transition-duration-200
+                    ${active ? 'surface-hover text-primary font-semibold' : 'text-color-secondary hover:surface-hover hover:text-color'}`}
             >
-                <i className={`${item.icon} text-lg transition-colors
-                    ${active ? 'text-blue-600' : 'text-gray-400 group-hover:text-gray-700'}`}
-                ></i>
-                <span className="text-sm font-medium">{item.label}</span>
+                <i className={`${item.icon} text-lg ${active ? 'text-primary' : 'text-color-secondary'}`}></i>
+                <span className="text-sm font-medium line-height-1">{item.label}</span>
             </div>
         );
     };
@@ -53,58 +56,80 @@ const Sidebar = () => {
     ];
 
     return (
-        <div className="h-screen flex flex-col bg-white border-r border-gray-200 select-none" style={{ width: '260px' }}>
-            <div className="p-5 border-b border-gray-100/60" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>
-                <div className="flex items-center gap-2.5 px-1">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-lg border bg-blue-50 border-blue-100">
-                        <i className="pi pi-shield text-blue-600 text-lg"></i>
+        // Cambié surface-overlay por surface-card para que mantenga la coherencia con el fondo de los componentes
+        <div className="h-screen flex flex-column surface-card surface-border border-right-1 select-none" style={{ width: '260px' }}>
+            {/* --- LOGO --- */}
+            <div className="p-4 hover:surface-hover transition-colors cursor-pointer" onClick={() => navigate('/dashboard')}>
+                <div className="flex align-items-center gap-3 px-1">
+                    <div className="flex align-items-center justify-content-center w-3rem h-3rem border-round border-1 surface-border surface-ground">
+                        <i className="pi pi-shield text-primary text-xl"></i>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-base font-bold text-gray-900 tracking-tight leading-none">TalentMetrics</span>
-                        <span className="text-[10px] font-semibold text-gray-400 tracking-widest mt-1 uppercase">AI Evaluation</span>
+                    <div className="flex flex-column">
+                        <span className="text-lg font-bold text-color line-height-1">TalentMetrics AI</span>
                     </div>
                 </div>
             </div>
 
-            <div className="grow overflow-y-auto pt-2">
+            {/* --- MENÚ --- */}
+            <div className="flex-grow-1 overflow-auto pt-2">
                 <Menu
                     model={consultorItems}
-                    className="w-full border-none! bg-transparent"
-                    style={{ width: '100%' }}
+                    className="w-full border-none bg-transparent"
                     pt={{
-                        submenuHeader: { className: 'text-[11px] font-bold text-gray-400 tracking-wider px-5 pt-4 pb-2 bg-transparent uppercase' },
-                        menu: { className: 'bg-transparent border-none' }
+                        submenuHeader: {
+                            className: 'text-xs font-bold text-color-secondary px-4 pb-2 uppercase surface-ground',
+                            style: { letterSpacing: '1px' }
+                        },
+                        menu: { className: 'border-none' }
                     }}
                 />
             </div>
 
-            <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-                <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center gap-2.5">
+            {/* --- FOOTER DE USUARIO --- */}
+            <div className="p-3 border-top-1 surface-border surface-ground">
+                <div className="flex align-items-center justify-content-between px-1 gap-3">
+                    <div className="flex align-items-center gap-3">
                         <div className="relative">
-                            <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-sm uppercase">
-                                {user?.name?.charAt(0) + user?.lastname?.charAt(0) || 'C'}
-                            </div>
-                            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+                            <Avatar
+                                label={user?.name?.charAt(0) + user?.lastName?.charAt(0) || 'C'}
+                                size="large"
+                                shape="circle"
+                                className="bg-primary text-primary-contrast font-bold shadow-1"
+                            />
+                            {/* Puntito verde de "conectado", el border hereda el color del parent para quedar prolijo */}
+                            <span className="absolute bottom-0 right-0 w-1rem h-1rem bg-green-500 border-2 border-circle" style={{ borderColor: 'var(--surface-ground)' }}></span>
                         </div>
-                        <div className="flex flex-col">
-                            <span className="text-sm font-semibold text-gray-800 leading-tight">
+                        <div className="flex flex-column">
+                            <span className="text-sm font-semibold text-color line-height-2">
                                 {user?.name} {user?.lastname}
                             </span>
-                            <span className="text-[11px] font-medium text-gray-500">
+                            <span className="text-xs font-medium text-color-secondary">
                                 Legajo: {user?.legajo}
                             </span>
                         </div>
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={logout}
-                        className="w-9 h-9 rounded-lg bg-white hover:bg-red-50 text-gray-400 hover:text-red-600 border border-gray-200 hover:border-red-100 transition-all duration-200 shadow-sm flex items-center justify-center cursor-pointer"
-                        title="Cerrar sesión"
-                    >
-                        <i className="pi pi-sign-out text-base"></i>
-                    </button>
+                    <div className="flex gap-1">
+                        <Button
+                            icon={isDark ? 'pi pi-sun' : 'pi pi-moon'}
+                            severity="secondary"
+                            onClick={toggleTheme}
+                            rounded
+                            tooltipOptions={{ position: 'top' }}
+                            tooltip={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+                            text
+                        />
+                        <Button
+                            icon="pi pi-sign-out"
+                            severity="secondary"
+                            text
+                            rounded
+                            aria-label="Cerrar sesión"
+                            onClick={logout}
+                            tooltip="Cerrar sesión"
+                            tooltipOptions={{ position: 'top' }}
+                        />
+                    </div>
                 </div>
             </div>
         </div>

@@ -46,6 +46,22 @@ export default function AuthProvider({ children }) {
         }
     };
 
+    const loginCandidate = async (accessCode) => {
+        setLoading(true);
+        try {
+            const response = await tmApi.post('/api/auth/candidate/login', { accessCode });
+            // Después de loguear con éxito, obligamos a React a pedir el /me
+            await fetchUser();
+
+            // Devolvemos la data para que el PublicHome sepa a dónde navegar
+            return response.data;
+        } catch (error) {
+            setUser(null);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const logout = async () => {
         setLoading(true);
@@ -67,7 +83,7 @@ export default function AuthProvider({ children }) {
 
     useEffect(() => {
 
-      const PUBLIC_ROUTES = [
+        const PUBLIC_ROUTES = [
             '/login',
             '/register',
             '/'
@@ -95,8 +111,11 @@ export default function AuthProvider({ children }) {
                 user,
                 loading,
                 login,
+                loginCandidate,
                 logout,
-                isAuthenticated: Boolean(user)
+                isAuthenticated: Boolean(user),
+                isConsultant: user?.role === 'CONSULTANT',
+                isCandidate: user?.role === 'CANDIDATE'
             }}
         >
             {children}

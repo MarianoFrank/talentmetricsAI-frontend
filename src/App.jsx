@@ -9,7 +9,11 @@ import DashboardWelcome from "./pages/consultant/DashboardWelcome";
 import PublicHome from "./pages/PublicHome";
 import QuestionList from "./pages/consultant/questions/QuestionList";
 import CreateQuestion from "./pages/consultant/questions/CreateQuestion";
-import GenerateEvaluation from "./pages/consultant/candidates/GenerateEvaluation";
+import GenerateEvaluation from "./pages/consultant/GenerateEvaluation";
+import CandidateLayout from "./pages/candidate/CandidateLayout";
+import Instructions from "./pages/candidate/Instructions";
+import QuestionnaireWizard from "./pages/candidate/QuestionnaireWizard";
+import TestCompleted from "./pages/candidate/TestCompleted";
 
 function App() {
     return (
@@ -39,6 +43,13 @@ function App() {
                             element={<QuestionList />}
                         />
                     </Route>
+                </Route>
+
+                {/* --- ZONA CANDIDATO (Exclusivo para candidatos) --- */}
+                <Route path="/questionnaire" element={<CandidateLayout />}>
+                    <Route path=":id" element={<Instructions />} />
+                    <Route path=":id/test" element={<QuestionnaireWizard />} />
+                    <Route path=":id/completed" element={<TestCompleted />} />
                 </Route>
 
                 {/* --- RUTA 404 --- */}
