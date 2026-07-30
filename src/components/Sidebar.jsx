@@ -40,7 +40,7 @@ const Sidebar = () => {
         {
             label: 'REPORTES',
             items: [
-                { label: 'Orden de mérito', icon: 'pi pi-list', route: '/reportes/merito', template: itemTemplate },
+                { label: 'Orden de mérito', icon: 'pi pi-list', route: '/reports/merit-order', template: itemTemplate },
                 { label: 'Reporte comparativo', icon: 'pi pi-copy', route: '/reportes/comparativo', template: itemTemplate }
             ]
         },

@@ -14,6 +14,8 @@ import CandidateLayout from "./pages/candidate/CandidateLayout";
 import Instructions from "./pages/candidate/Instructions";
 import QuestionnaireWizard from "./pages/candidate/QuestionnaireWizard";
 import TestCompleted from "./pages/candidate/TestCompleted";
+import MeritOrderList from "./pages/consultant/reports/MeritOrderList";
+import MeritOrderReport from "./pages/consultant/reports/MeritOrderReport";
 
 function App() {
     return (
@@ -42,6 +44,10 @@ function App() {
                             path="/questions"
                             element={<QuestionList />}
                         />
+
+                        {/* Reportes */}
+                        <Route path="/reports/merit-order" element={<MeritOrderList />} />
+                        <Route path="/reports/merit-order/:id" element={<MeritOrderReport />} />
                     </Route>
                 </Route>
 
