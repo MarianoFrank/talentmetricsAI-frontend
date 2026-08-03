@@ -131,6 +131,7 @@ const MeritOrderList = () => {
                     <div className="flex flex-column flex-1 gap-2">
                         <label className="font-medium text-sm text-color-secondary">Empresa</label>
                         <Dropdown
+                            filter
                             value={filters.companyId}
                             options={companiesList}
                             onChange={(e) => setFilters({ ...filters, companyId: e.value })}

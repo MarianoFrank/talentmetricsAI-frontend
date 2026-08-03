@@ -64,7 +64,7 @@ export default function DashboardWelcome() {
                 </div>
 
                 <div className="col-12 md:col-4 p-2">
-                    <div className="surface-card border-1 surface-border border-round p-4 h-full flex flex-column hover:surface-hover transition-colors cursor-pointer" onClick={() => navigate('/reportes/merito')}>
+                    <div className="surface-card border-1 surface-border border-round p-4 h-full flex flex-column hover:surface-hover transition-colors cursor-pointer" onClick={() => navigate('/reports/merit-order')}>
                         <div className="flex align-items-center justify-content-center w-3rem h-3rem border-circle surface-ground text-primary mb-3">
                             <i className="pi pi-chart-bar text-xl"></i>
                         </div>

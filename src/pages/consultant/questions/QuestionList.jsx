@@ -123,6 +123,7 @@ const QuestionList = () => {
                         <label className="font-medium text-sm text-color-secondary">Competencia</label>
                         <Dropdown
                             value={filters.competencyId}
+                            filter
                             options={competenciasList}
                             onChange={handleCompetencyChange}
                             optionLabel="nombre"
